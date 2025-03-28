@@ -23,25 +23,61 @@ function App() {
             });
     }, []);
 
-    // Add product to cart
-    const addToCart = (product) => {
-        if (product.quantity === 0) return; // Prevent adding out-of-stock products
-
-        setCart((prev) => {
-            const updated = { ...prev };
-            if (updated[product.id]) {
-                updated[product.id].quantity += 1;
-            } else {
-                updated[product.id] = {
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    quantity: 1,
-                };
-            }
-            return updated;
-        });
+    // Generate or get the transaction ID from sessionStorage
+    const getTransactionId = () => {
+        let transactionId = sessionStorage.getItem('transactionId');
+        if (!transactionId) {
+            transactionId = `txn_${Math.random().toString(36).substring(2)}_${Date.now()}`;
+            sessionStorage.setItem('transactionId', transactionId);
+        }
+        return transactionId;
     };
+
+
+    const addToCart = async (product) => {
+      const sessionId = getTransactionId();
+  
+      try {
+          // Send the request to add to the cart
+          const res = await axios.post("http://localhost:5146/api/Products/add-to-cart", {
+              sessionId,
+              productId: product.id,
+          });
+  
+          const updatedStock = res.data.remaining; // Get updated stock quantity from backend
+  
+          // Update cart state
+          setCart((prev) => {
+              const updated = { ...prev };
+              if (updated[product.id]) {
+                  updated[product.id].quantity += 1;
+              } else {
+                  updated[product.id] = {
+                      id: product.id,
+                      name: product.name,
+                      price: product.price,
+                      quantity: 1,
+                  };
+              }
+              return updated;
+          });
+  
+          // Update the product stock in UI after adding it to the cart
+          setProducts((prev) =>
+              prev.map((p) =>
+                  p.id === product.id ? { ...p, quantity: updatedStock } : p
+              )
+          );
+  
+      } catch (err) {
+          console.error(err);
+          const message =
+              err.response?.data || "Could not add product to cart";
+          alert(message);
+        }
+    };
+  
+    
 
     // Calculate total
     useEffect(() => {
@@ -54,24 +90,58 @@ function App() {
 
     // Handle checkout
     const handleCheckout = async () => {
-        const items = Object.values(cart).map((item) => ({
-            productId: item.id,
-            quantity: item.quantity,
-        }));
+      const items = Object.values(cart).map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+      }));
 
-        try {
-            const res = await axios.post("http://localhost:5146/api/checkout", {
-                items,
-                cashPaid: parseFloat(cashPaid),
-            });
+      const sessionId = getTransactionId();
 
-            setChange(res.data.change);
-            setCart({});
-            setCashPaid("");
-        } catch (err) {
-            setError(err.response?.data || "Checkout failed");
+      try {
+          const res = await axios.post("http://localhost:5146/api/products/checkout", {
+              items,
+              cashPaid: parseFloat(cashPaid),
+              sessionId,
+          });
+
+          setChange(res.data.change);
+          setCart({});
+          setCashPaid("");
+      } catch (err) {
+          setError(err.response?.data || "Checkout failed");
+      }
+    };
+
+    const handleReset = async () => {
+      const sessionId = getTransactionId();
+  
+      try {
+          // Hangi transactionId backendist
+          const res = await axios.get(`http://localhost:5146/api/products/transaction-id/${sessionId}`);
+          const transactionId = res.data.transactionId;
+  
+          // Tee reset-päring
+          await axios.post(`http://localhost:5146/api/products/reset/${transactionId}`);
+  
+          // Tühjenda ostukorv ja laadige tooted uuesti
+          setCart({});
+          setChange(null);
+          setCashPaid("");
+          setError("");
+  
+          // Laadi uuesti tooted
+          const refreshed = await axios.get("http://localhost:5146/api/products");
+          setProducts(refreshed.data);
+  
+      } catch (err) {
+          console.error(err);
+          setError("Failed to reset transaction.");
         }
     };
+  
+  
+
+
 
     return (
         <div className="App">
@@ -117,6 +187,11 @@ function App() {
             <button onClick={handleCheckout} disabled={!cashPaid || total === 0}>
                 Checkout
             </button>
+
+            <button onClick={handleReset} style={{ marginLeft: "1rem", backgroundColor: "#eee" }}>
+                Reset
+            </button>
+
 
             {change !== null && (
                 <p>Change: {change.toFixed(2)} €</p>
