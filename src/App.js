@@ -17,7 +17,7 @@ function App() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const response = await axios.get("http://localhost:5146/api/Products");
+                const response = await axios.get("http://localhost:8080/api/Products");
                 setProducts(response.data);
             } catch (error) {
                 console.error("Error fetching products:", error);
@@ -55,7 +55,7 @@ function App() {
   
       try {
           // Call the backend to add the product to the cart
-          const res = await axios.post("http://localhost:5146/api/Products/add-to-cart", {
+          const res = await axios.post("http://localhost:8080/api/Products/add-to-cart", {
               sessionId,
               productId: product.id,
           });
@@ -92,7 +92,7 @@ function App() {
           alert(message);
         }
     };
-    
+
 
     // Calculate total whenever cart changes
     useEffect(() => {
@@ -113,7 +113,7 @@ function App() {
         const sessionId = getTransactionId();
 
         try {
-            const res = await axios.post("http://localhost:5146/api/products/checkout", {
+            const res = await axios.post("http://localhost:8080/api/products/checkout", {
                 items,
                 cashPaid: parseFloat(cashPaid),
                 sessionId,
@@ -133,10 +133,10 @@ function App() {
         const sessionId = getTransactionId();
 
         try {
-            const res = await axios.get(`http://localhost:5146/api/products/transaction-id/${sessionId}`);
+            const res = await axios.get(`http://localhost:8080/api/products/transaction-id/${sessionId}`);
             const transactionId = res.data.transactionId;
 
-            await axios.post(`http://localhost:5146/api/products/reset/${transactionId}`);
+            await axios.post(`http://localhost:8080/api/products/reset/${transactionId}`);
 
             setCart({});
             sessionStorage.removeItem("cart");
@@ -144,7 +144,7 @@ function App() {
             setCashPaid("");
             setError("");
 
-            const refreshed = await axios.get("http://localhost:5146/api/products");
+            const refreshed = await axios.get("http://localhost:8080/api/products");
             setProducts(refreshed.data);
         } catch (err) {
             console.error(err);
@@ -164,7 +164,7 @@ function App() {
               onClick={() => addToCart(product)}
             >
               <img
-                src={`http://localhost:5146/${product.imageUrl}`}
+                src={`${product.imageUrl}`}
                 alt={product.name}
                 className={product.quantity === 0 ? "out-of-stock" : ""}
               />
