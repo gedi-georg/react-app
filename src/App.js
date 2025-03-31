@@ -13,11 +13,13 @@ function App() {
     const [change, setChange] = useState(null);
     const [error, setError] = useState("");
 
+    const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8080/api";
+
     // Fetch products from backend
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const response = await axios.get("http://localhost:8080/api/Products");
+                const response = await axios.get(API_BASE_URL + "/Products");
                 setProducts(response.data);
             } catch (error) {
                 console.error("Error fetching products:", error);
@@ -26,7 +28,7 @@ function App() {
         };
 
         fetchProducts();
-    }, []);
+    }, [API_BASE_URL]);
 
     // Save cart to sessionStorage when it changes
     useEffect(() => {
@@ -55,7 +57,7 @@ function App() {
   
       try {
           // Call the backend to add the product to the cart
-          const res = await axios.post("http://localhost:8080/api/Products/add-to-cart", {
+          const res = await axios.post(API_BASE_URL + "/Products/add-to-cart", {
               sessionId,
               productId: product.id,
           });
@@ -113,7 +115,7 @@ function App() {
         const sessionId = getTransactionId();
 
         try {
-            const res = await axios.post("http://localhost:8080/api/products/checkout", {
+            const res = await axios.post(API_BASE_URL + "/products/checkout", {
                 items,
                 cashPaid: parseFloat(cashPaid),
                 sessionId,
@@ -133,10 +135,10 @@ function App() {
         const sessionId = getTransactionId();
 
         try {
-            const res = await axios.get(`http://localhost:8080/api/products/transaction-id/${sessionId}`);
+            const res = await axios.get(API_BASE_URL + `/products/transaction-id/${sessionId}`);
             const transactionId = res.data.transactionId;
 
-            await axios.post(`http://localhost:8080/api/products/reset/${transactionId}`);
+            await axios.post(API_BASE_URL + `/products/reset/${transactionId}`);
 
             setCart({});
             sessionStorage.removeItem("cart");
@@ -144,7 +146,7 @@ function App() {
             setCashPaid("");
             setError("");
 
-            const refreshed = await axios.get("http://localhost:8080/api/products");
+            const refreshed = await axios.get(API_BASE_URL + "/Products");
             setProducts(refreshed.data);
         } catch (err) {
             console.error(err);
